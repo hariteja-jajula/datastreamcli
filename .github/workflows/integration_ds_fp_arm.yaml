@@ -63,35 +63,57 @@ jobs:
 
       # Dynamically configures the test execution JSON by setting the branch name and conditionally removing Docker build commands for containers whose Dockerfiles haven't changed (optimization only applies to push events, not manual triggers)
       - name: Prepare execution config
+        # All user-controllable values come via env, NEVER via ${{ }}
+        # interpolation in the run: body. This workflow runs on pull_request
+        # from forks, so github.head_ref and PR shas are attacker-controllable
+        # and inlining them would allow arbitrary command execution under the
+        # OIDC AWS role granted to this job.
         env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_BRANCH: ${{ inputs.branch_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_AFTER: ${{ github.sha }}
           DS_TAG: ${{ inputs.ds_tag || 'latest-arm64' }}
           FP_TAG: ${{ inputs.fp_tag || 'latest-arm64' }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.branch_name }}" ]; then
-            BRANCH_NAME="${{ inputs.branch_name }}"
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            BRANCH_NAME="${{ github.head_ref }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$INPUT_BRANCH" ]; then
+            BRANCH_NAME="$INPUT_BRANCH"
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH_NAME="$HEAD_REF"
           else
-            BRANCH_NAME="${{ github.ref_name }}"
+            BRANCH_NAME="$REF_NAME"
           fi
+
+          # Defensive: reject branch names / tags with sed-delimiter or
+          # backslash characters that would break the s|...| substitutions
+          # below. Legitimate git refs cannot contain these.
+          for v in "$BRANCH_NAME" "$DS_TAG" "$FP_TAG"; do
+            case "$v" in
+              *'|'*|*'\'*) echo "Invalid value '$v' (contains | or \\)"; exit 1 ;;
+            esac
+          done
 
           sed -i "s|\${BRANCH_NAME}|$BRANCH_NAME|g" .github/executions/fp_ds_test_execution_arm.json
           sed -i "s|\${DS_TAG}|$DS_TAG|g" .github/executions/fp_ds_test_execution_arm.json
           sed -i "s|\${FP_TAG}|$FP_TAG|g" .github/executions/fp_ds_test_execution_arm.json
 
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            DIFF=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }})
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            DIFF=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            DIFF=$(git diff --name-only "$PR_BASE_SHA"..."$PR_HEAD_SHA")
+          elif [ "$EVENT_NAME" = "push" ]; then
+            DIFF=$(git diff --name-only "$EVENT_BEFORE" "$EVENT_AFTER")
           else
             DIFF=$(git diff --name-only origin/main...HEAD)
           fi
 
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && ! echo "$DIFF" | grep -q '^docker/Dockerfile\.datastream-deps$'; then
+          if [ "$EVENT_NAME" != "workflow_dispatch" ] && ! echo "$DIFF" | grep -q '^docker/Dockerfile\.datastream-deps$'; then
             sed -i "/docker-compose\.yml build datastream-deps/d" .github/executions/fp_ds_test_execution_arm.json
           fi
 
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && ! echo "$DIFF" | grep -q '^docker/Dockerfile\.datastream$'; then
+          if [ "$EVENT_NAME" != "workflow_dispatch" ] && ! echo "$DIFF" | grep -q '^docker/Dockerfile\.datastream$'; then
             sed -i "/docker-compose\.yml build datastream/d" .github/executions/fp_ds_test_execution_arm.json
           fi
 

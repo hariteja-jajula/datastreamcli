@@ -56,13 +56,23 @@ jobs:
         aws-region: us-east-1
 
     - name: Build docker containers
+      # Pass user-controllable values via env (not ${{ }} inline) to avoid
+      # shell injection through workflow_dispatch inputs and PR-controlled
+      # refs like github.head_ref / pull_request.head.sha.
+      env:
+        FP_TAG_INPUT: ${{ inputs.fp_tag }}
+        EVENT_NAME: ${{ github.event_name }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        EVENT_BEFORE: ${{ github.event.before }}
+        EVENT_AFTER: ${{ github.sha }}
       run : |
-        if [ -z "${{ inputs.fp_tag }}" ]; then
+        if [ -z "$FP_TAG_INPUT" ]; then
           echo "FP_TAG input not provided, building datastream containers..."
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            DIFF=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }})
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            DIFF=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            DIFF=$(git diff --name-only "$PR_BASE_SHA"..."$PR_HEAD_SHA")
+          elif [ "$EVENT_NAME" = "push" ]; then
+            DIFF=$(git diff --name-only "$EVENT_BEFORE" "$EVENT_AFTER")
           else
             DIFF=$(git diff --name-only origin/main...HEAD)
           fi
@@ -75,7 +85,7 @@ jobs:
           fi
           TAG=latest-x86 docker compose -f docker/docker-compose.yml build datastream
         else
-          echo "FP_TAG input provided (${{ inputs.fp_tag }}), skipping datastream build and using existing images..."
+          echo "FP_TAG input provided ($FP_TAG_INPUT), skipping datastream build and using existing images..."
         fi
 
     - name: Test docker containers

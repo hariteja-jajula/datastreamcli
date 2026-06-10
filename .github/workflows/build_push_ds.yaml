@@ -55,12 +55,16 @@ jobs:
     - name: Detect version changes
       id: changes
       shell: bash
+      # Pass user-controllable workflow_dispatch inputs through env to avoid
+      # shell injection via GitHub Actions ${{ }} interpolation. NEVER inline
+      # ${{ inputs.* }} directly into a run: block.
+      env:
+        FORCE_DEPS: ${{ inputs.force_build_deps }}
+        FORCE_DS: ${{ inputs.force_build_ds }}
       run: |
         set -euo pipefail
 
-        # Check for manual trigger with forced builds
-        FORCE_DEPS="${{ inputs.force_build_deps }}"
-        FORCE_DS="${{ inputs.force_build_ds }}"
+        # Check for manual trigger with forced builds (values come from env)
 
         if [ -n "$FORCE_DEPS" ] || [ -n "$FORCE_DS" ]; then
           echo "Manual trigger with forced build detected"
@@ -220,32 +224,49 @@ jobs:
       # Dynamically configures the test execution JSON by setting the branch name and conditionally removing Docker build commands for containers whose Dockerfiles haven't changed (optimization only applies to push events, not manual triggers)
       - name: Prepare execution config
         id: prep_config
+        # User-controllable values come via env (not ${{ }} interpolation in
+        # the run: body) to prevent shell injection.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_BRANCH: ${{ inputs.branch_name }}
+          REF_NAME: ${{ github.ref_name }}
+          BUILD_DEPS: ${{ needs.detect-changes.outputs.build_deps }}
+          BUILD_DS: ${{ needs.detect-changes.outputs.build_ds }}
+          DEPS_VERSION: ${{ needs.detect-changes.outputs.deps_version }}
+          DS_VERSION: ${{ needs.detect-changes.outputs.ds_version }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.branch_name }}" ]; then
-            BRANCH_NAME="${{ inputs.branch_name }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$INPUT_BRANCH" ]; then
+            BRANCH_NAME="$INPUT_BRANCH"
           else
-            BRANCH_NAME="${{ github.ref_name }}"
+            BRANCH_NAME="$REF_NAME"
           fi
 
+          # sed -i uses BRANCH_NAME as the replacement; sed substitutions are
+          # not subject to shell injection but a value containing '|' or '\'
+          # could break the s|...| delimiter. Reject those defensively.
+          case "$BRANCH_NAME" in
+            *'|'*|*'\'*) echo "Invalid branch name '$BRANCH_NAME'"; exit 1 ;;
+          esac
+
           sed -i "s|\${BRANCH_NAME}|$BRANCH_NAME|g" .github/executions/ds_push_execution_arm.json
-          if [ "${{ needs.detect-changes.outputs.build_deps }}" != "true" ]; then
+          if [ "$BUILD_DEPS" != "true" ]; then
             sed -i "/docker-compose\.yml build datastream-deps/d" .github/executions/ds_push_execution_arm.json
           fi
 
-          if [ "${{ needs.detect-changes.outputs.build_ds }}" != "true" ]; then
+          if [ "$BUILD_DS" != "true" ]; then
             sed -i "/docker-compose\.yml build datastream/d" .github/executions/ds_push_execution_arm.json
           fi
           BUILD_FLAGS=""
           DEPS_TAG=""
           DS_TAG=""
           # Build flags and determine the most recent version for TAG
-          if [ "${{ needs.detect-changes.outputs.build_deps }}" == "true" ]; then
+          if [ "$BUILD_DEPS" = "true" ]; then
             BUILD_FLAGS="$BUILD_FLAGS -e"
-            DEPS_TAG="${{ needs.detect-changes.outputs.deps_version }}-arm64"
+            DEPS_TAG="${DEPS_VERSION}-arm64"
           fi
-          if [ "${{ needs.detect-changes.outputs.build_ds }}" == "true" ]; then
+          if [ "$BUILD_DS" = "true" ]; then
             BUILD_FLAGS="$BUILD_FLAGS -f"
-            DS_TAG="${{ needs.detect-changes.outputs.ds_version }}-arm64"
+            DS_TAG="${DS_VERSION}-arm64"
           fi
 
           if [ -z "$BUILD_FLAGS" ]; then
