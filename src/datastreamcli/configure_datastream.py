@@ -137,12 +137,17 @@ def create_conf_nwm(args):
     else:
         start_dt = datetime.strptime(start,'%Y%m%d%H%M')
         end_dt   = datetime.strptime(end,'%Y%m%d%H%M')
-        num_hrs = ((end_dt - start_dt).seconds // 3600) + 1
+        # total_seconds() includes the .days component; .seconds is only the
+        # 0..86399 sub-day remainder, so any window > 24h was previously
+        # truncated and num_hrs was wildly wrong for multi-day runs.
+        num_hrs = int((end_dt - start_dt).total_seconds() // 3600) + 1
 
     start_str_real = start_dt.strftime('%Y-%m-%d %H:%M:%S')
     end_str_real = end_dt.strftime('%Y-%m-%d %H:%M:%S')
     start_str_nwm = start_dt.strftime('%Y%m%d%H%M')
-    end_str_nwm    = start_dt.strftime('%Y%m%d%H%M')
+    # Use end_dt, not start_dt. Copy-paste typo silently caused every
+    # non-retro run to set end_date == start_date in the nwm config.
+    end_str_nwm    = end_dt.strftime('%Y%m%d%H%M')
 
 
     if "RETRO" in args.forcing_source:
