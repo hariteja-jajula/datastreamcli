@@ -27,7 +27,7 @@ docker compose -f docker/docker-compose.yml build
 docker compose -f docker/docker-compose.yml build datastream
 
 # Set architecture (x86 or aarch64)
-ARCH=aarch64 docker -f docker/docker-compose.yml compose build
+ARCH=aarch64 docker compose -f docker/docker-compose.yml build
 
 # Build with custom tags
 TAG=latest-x86 docker compose -f docker/docker-compose.yml build datastream-deps
