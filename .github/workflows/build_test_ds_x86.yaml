@@ -203,14 +203,21 @@ jobs:
           aws-region: us-east-1
 
       - name: Run ${{ matrix.test-suite.name }}
+        # aws-actions/configure-aws-credentials@v4 exports AWS_* into the
+        # runner's shell environment (via $GITHUB_ENV), NOT into the
+        # workflow-level `env:` context. So ${{ env.AWS_ACCESS_KEY_ID }}
+        # resolves to an empty string and the container was previously
+        # launched with blank creds. Use docker's `-e VAR` (no =value) form
+        # so the variable is inherited from the runner shell, where the
+        # action has actually set it.
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/datastreamcli \
             -w /datastreamcli \
             -e AWS_REGION=us-east-1 \
-            -e "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" \
-            -e "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" \
-            -e "AWS_SESSION_TOKEN=${{ env.AWS_SESSION_TOKEN }}" \
+            -e AWS_ACCESS_KEY_ID \
+            -e AWS_SECRET_ACCESS_KEY \
+            -e AWS_SESSION_TOKEN \
             awiciroh/${{ matrix.test-suite.image }}:latest-x86 \
             ${{ matrix.test-suite.command }}
           
