@@ -242,7 +242,7 @@ def gen_lstm(
         lstm_config_jcat['area_sqkm'] = hf_row['areasqkm']
         lstm_config_jcat['basin_id'] = jcat
         lstm_config_jcat['basin_name'] = jcat
-        lstm_config_jcat['elev_mean'] = attrs_row['mean.elevation'] / 100,  # convert cm in hf to m
+        lstm_config_jcat['elev_mean'] = attrs_row['mean.elevation'] / 100  # convert cm in hf to m
         lstm_config_jcat['lat'] = lat
         lstm_config_jcat['lon'] = lon
         lstm_config_jcat['slope_mean'] = attrs_row['mean_slope_mpkm']
