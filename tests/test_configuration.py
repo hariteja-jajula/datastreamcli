@@ -1,3 +1,4 @@
+import os
 import pytest, json
 from datetime import datetime, timezone, timedelta
 from datastreamcli.configure_datastream import create_confs
@@ -63,8 +64,8 @@ class Inputs:
         self.forcing_split_vpu = forcing_split_vpu
         self.realization = realization
         self.realization_provided = realization_provided
-        self.troute_restart = troute_restart,
-        self.troute_crosswalk = troute_crosswalk,
+        self.troute_restart  = troute_restart
+        self.troute_crosswalk = troute_crosswalk
         self.s3_bucket = s3_bucket
         self.s3_prefix = s3_prefix
         self.ngen_bmi_confs = ngen_bmi_confs
