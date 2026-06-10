@@ -273,7 +273,7 @@ def create_conf_fp(args,start_real):
 
     if len(args.s3_bucket) > 0:
         if "DAILY" in args.start_date:
-            args.s3_prefix = re.sub(r"\DAILY",datetime.strptime(start_real,'%Y-%m-%d %H:%M:%S').strftime('%Y%m%d'),args.s3_prefix)
+            args.s3_prefix = re.sub(r"DAILY",datetime.strptime(start_real,'%Y-%m-%d %H:%M:%S').strftime('%Y%m%d'),args.s3_prefix)
         output_path  = f"s3://{args.s3_bucket}/{args.s3_prefix}"
     elif len(args.docker_mount) > 0:
         gpkg_file = [f"{args.docker_mount}/datastream-resources/config/{geo_base}"]
@@ -333,6 +333,9 @@ def create_confs(args):
     conf = config_class2dict(args)
     realization = args.realization
 
+    start_real = ""
+    end_real = ""
+    ensemble_member = 0
     if args.start_date != 'DAILY':
         start_dt = datetime.strptime(args.start_date,'%Y%m%d%H%M')
         end_dt   = datetime.strptime(args.end_date,'%Y%m%d%H%M')
@@ -346,6 +349,7 @@ def create_confs(args):
         _, start_real, end_real, ensemble_member = create_conf_nwm(args)
     elif os.path.exists(os.path.join(args.resource_path,"nwm-forcings")):
         nwm_conf = {}
+        _, start_real, end_real, ensemble_member = create_conf_nwm(args)
         fp_conf  = create_conf_fp(args,start_real)
     else:
         nwm_conf, start_real, end_real, ensemble_member = create_conf_nwm(args)
