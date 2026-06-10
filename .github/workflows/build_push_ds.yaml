@@ -32,6 +32,16 @@ permissions:
   contents: read
   security-events: write
 
+# Serialise runs of this workflow: they share Terraform state
+# (infra/aws/terraform/modules/orchestration), an AWS Step Functions state
+# machine, and the actions_key_arm EC2 key pair. Two simultaneous runs would
+# have one workflow's `terraform destroy` tear down infra the other is still
+# using. cancel-in-progress is false so an in-flight run finishes cleanly
+# before the next starts.
+concurrency:
+  group: ${{ github.workflow }}-aws-shared-infra
+  cancel-in-progress: false
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest

@@ -43,6 +43,13 @@ permissions:
   contents: read
   security-events: write
 
+# Serialise runs: shared Terraform state for the ARM orchestration module
+# and the singleton actions_key_arm EC2 key pair. Concurrent runs would
+# corrupt state. cancel-in-progress: false lets the active run finish.
+concurrency:
+  group: ${{ github.workflow }}-aws-shared-infra
+  cancel-in-progress: false
+
 jobs:    
   build-test-docker-arm:
     runs-on: ubuntu-latest
