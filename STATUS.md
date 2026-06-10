@@ -17,6 +17,6 @@
 * ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/test_datastream_python_model_realizations.yaml/badge.svg)
 
 # Docker
-* ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/build_test_docker_x86.yaml/badge.svg)
-* ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/build_test_push_docker_x86.yaml/badge.svg)
-* ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/build_test_push_docker_arm.yaml/badge.svg)
+* ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/build_test_ds_x86.yaml/badge.svg)
+* ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/build_test_ds_arm.yaml/badge.svg)
+* ![](https://github.com/CIROH-UA/datastreamcli/actions/workflows/build_push_ds.yaml/badge.svg)
