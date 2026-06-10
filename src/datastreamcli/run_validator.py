@@ -114,7 +114,7 @@ def validate_catchment_files(validations : Dict[str, List[str]],
                     df = pd.read_csv(full_path)
                     forcings_start = datetime.strptime(df['time'].iloc[0],'%Y-%m-%d %H:%M:%S')
                     forcings_end   = datetime.strptime(df['time'].iloc[-1],'%Y-%m-%d %H:%M:%S')
-                    check_forcings(forcings_start,forcings_end,len(df['time']))
+                    check_forcings(serialized_realization,forcings_start,forcings_end,len(df['time']))
 
 def validate_data_dir(data_dir : str, troute_restart : str="", troute_crosswalk : str="") -> None:
     """
@@ -144,7 +144,7 @@ def validate_data_dir(data_dir : str, troute_restart : str="", troute_crosswalk 
                 if jfile_path.find(troute_restart) >= 0:
                     if troute_restart_file is None:
                         troute_restart_file = jfile_path
-            if troute_crosswalk_file != "":
+            if troute_crosswalk != "":
                 if jfile_path.find(troute_crosswalk) >= 0:
                     if troute_crosswalk_file is None:
                         troute_crosswalk_file = jfile_path
