@@ -484,7 +484,6 @@ if [ ! -z $SUBSET_ID ]; then
     log_n_run_steps hfsubset -w "medium_range" -s 'nextgen' -v "2.1.1" -l divides,flowlines,network,nexus,forcing-weights,flowpath-attributes,divide-attributes -o $GEOPACKAGE_RESOURCES -t $SUBSET_ID_TYPE "$SUBSET_ID"
     GEOPACKAGE_NGENRUN=$NGENRUN_CONFIG/$GEO_BASE
     cp $GEOPACKAGE_RESOURCES $GEOPACKAGE_NGENRUN
-    log_steps HFSUBSET $CMD_STR $FP_DOCKER_SHA
     log_time "SUBSET_END"
 fi
 
@@ -601,7 +600,12 @@ else
             filebase=$(basename $file)
             echo "$DOCKER_RESOURCES/nwm-forcings/$filebase" >> "$FILENAMES"
         done
-        cp $LOCAL_FILENAMES $DATASTREAM_META/filenamelist.txt
+        # Copy the in-container-paths file (FILENAMES) to metadata. Previously
+        # this copied $LOCAL_FILENAMES, which was deleted four lines above;
+        # it only worked by accident because both vars held the same literal
+        # string "filenamelist.txt". Any rename of either var silently broke
+        # the forcing pipeline.
+        cp $FILENAMES $DATASTREAM_META/filenamelist.txt
         rm $FILENAMES
 
         if [ ! -e $DATASTREAM_RESOURCES_NWMFORCINGS ]; then
