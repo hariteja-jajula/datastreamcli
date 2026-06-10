@@ -144,11 +144,14 @@ def generate_troute_conf(out_dir : str,
             pattern = r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
             troute_conf_str[j] = re.sub(pattern, start.strftime('%Y-%m-%d %H:%M:%S'), jline)
 
-        pattern = r'^\s*max_loop_size\s*:\s*\d+\.\d+'
+        # Accept integer or float values: '18', '18.0', '18.00' all valid.
+        # The old regex required a literal '.', so integer template values
+        # silently failed to match and the user's run length was ignored.
+        pattern = r'^\s*max_loop_size\s*:\s*\d+(?:\.\d+)?'
         if re.search(pattern,jline):
             troute_conf_str[j] = re.sub(pattern,  f"    max_loop_size: {max_loop_size}      ", jline)
 
-        pattern = r'^\s*nts\s*:\s*\d+\.\d+'
+        pattern = r'^\s*nts\s*:\s*\d+(?:\.\d+)?'
         if re.search(pattern,jline):
             troute_conf_str[j] = re.sub(pattern,  f"    nts: {nts}      ", jline)
 
@@ -423,13 +426,21 @@ if __name__ == "__main__":
         required=False
     )
 
+    # type=list calls list(value) which iterates the input string char by
+    # char, so '--lstm_ensembles 0,1,2' produced ['0', ',', '1', ',', '2']
+    # and the downstream int(j) call raised ValueError on the commas. Parse
+    # explicitly as comma-separated integers. Default kept as the same six
+    # members 0..5 the legacy '012345' string expanded to.
+    def _parse_ensembles(s):
+        return [int(x) for x in s.split(",") if x.strip() != ""]
+
     parser.add_argument(
         "--lstm_ensembles",
         dest="lstm_ensembles",
-        type=list,
-        help="List of integers corresponding to lstm ensemble members",
+        type=_parse_ensembles,
+        help="Comma-separated integers for lstm ensemble members (e.g. 0,1,2,3,4,5)",
         required=False,
-        default="012345"
+        default=[0, 1, 2, 3, 4, 5],
     )
 
     args = parser.parse_args()
@@ -467,7 +478,11 @@ if __name__ == "__main__":
         if "NoahOWP" in ignore:
             print(f'ignoring NoahOWP')
         else:
-            if "pkl_file" in args:
+            # 'pkl_file' in args is always True because argparse defines the
+            # attribute (defaulting to None). Test the actual value so the
+            # 'manual generation not implemented' branch is reachable when
+            # --pkl_file was not supplied.
+            if getattr(args, "pkl_file", None):
                 print(f'Generating NoahOWP configs from pickle',flush = True)
                 global noah_dir,pkl_file
                 pkl_file = args.pkl_file
