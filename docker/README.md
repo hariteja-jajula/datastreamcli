@@ -7,7 +7,6 @@ This directory contains Docker configurations for building and running datastrea
 - `docker-compose.yml` - Multi-service orchestration for datastream components
 - `Dockerfile.datastream-deps` - Base dependencies image (Amazon Linux 2023)
 - `Dockerfile.datastream` - Main datastream application image
-- `config.json` - Docker daemon configuration with proxy settings
 
 ## Services
 
