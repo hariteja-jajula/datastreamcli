@@ -1,8 +1,9 @@
 import boto3
 import json
 
-# Initialize S3 client
-s3_client = boto3.client('s3')
+# S3 client is created lazily inside main() so importing this module
+# does not require AWS credentials or network access.
+s3_client = None
 
 def count_key_value_pairs(json_data):
     try:
@@ -33,7 +34,13 @@ def process_s3_files(bucket_name, prefix):
         num_pairs = count_key_value_pairs(file_content)
         print(f"File: {file_key}, Key-Value Pairs: {num_pairs}")
 
-# Example usage
-bucket_name = 'datastream-resources'
-prefix = 'weights'
-process_s3_files(bucket_name, prefix)
+def main():
+    global s3_client
+    if s3_client is None:
+        s3_client = boto3.client('s3')
+    bucket_name = 'datastream-resources'
+    prefix = 'weights'
+    process_s3_files(bucket_name, prefix)
+
+if __name__ == "__main__":
+    main()
